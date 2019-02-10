@@ -1,4 +1,4 @@
-FROM ubuntu:14.04
+FROM ubuntu
 ADD krb5.conf /etc/krb5.conf
 
 RUN apt-get -y update

@@ -106,12 +106,7 @@ function map_ports() {
         comp="$1"
         port="$2"
         COMP="$(printf "%s\n" "$comp" | tr '[:lower:]' '[:upper:]')"
-        if [[ "${OSTYPE}" == "darwin"* ]]; then
-                b2d_ip=$(docker-machine ip default)
-                export ${COMP}_PORT_${port}_TCP_ADDR=${b2d_ip}
-        else
-                export ${COMP}_PORT_${port}_TCP_ADDR=127.0.0.1
-        fi
+        export ${COMP}_PORT_${port}_TCP_ADDR=127.0.0.1
         export ${COMP}_PORT_${port}_TCP_PORT=$($DOCKER port ${comp} ${port} | cut -f2 -d ':')
 }
 
