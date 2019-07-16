@@ -6,12 +6,8 @@ We have stuff left outstanding, and would appreciate your help.
 
 These are the remaining GSSAPI calls to implement, in no particular order.
 
-- [ ] gss_acquire_cred_from
-- [ ] gss_acquire_cred_impersonate_name
 - [ ] gss_acquire_cred_with_password
 - [ ] gss_add_buffer_set_member
-- [ ] gss_add_cred_from
-- [ ] gss_add_cred_impersonate_name
 - [ ] gss_authorize_localname
 - [ ] gss_complete_auth_token
 - [ ] gss_context_time
@@ -21,13 +17,11 @@ These are the remaining GSSAPI calls to implement, in no particular order.
 - [ ] gss_display_mech_attr
 - [ ] gss_display_name_ext
 - [ ] gss_encapsulate_token
-- [ ] gss_export_cred
 - [ ] gss_export_name_composite
 - [ ] gss_export_sec_context
 - [ ] gss_get_mic_iov
 - [ ] gss_get_mic_iov_length
 - [ ] gss_get_name_attribute
-- [ ] gss_import_cred
 - [ ] gss_import_sec_context
 - [ ] gss_indicate_mechs_by_attrs
 - [ ] gss_inquire_attrs_for_mech
@@ -61,8 +55,6 @@ These are the remaining GSSAPI calls to implement, in no particular order.
 - [ ] gss_set_neg_mechs
 - [ ] gss_set_sec_context_option
 - [ ] gss_sign
-- [ ] gss_store_cred
-- [ ] gss_store_cred_into
 - [ ] gss_unseal
 - [ ] gss_unwrap_aead
 - [ ] gss_unwrap_iov

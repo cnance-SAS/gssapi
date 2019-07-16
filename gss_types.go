@@ -6,8 +6,11 @@ package gssapi
 
 /*
 #include <gssapi/gssapi.h>
+#include <gssapi/gssapi_ext.h>
+#include <stdlib.h>
 */
 import "C"
+import "unsafe"
 
 // Struct types. The structs themselves are allocated in Go and are therefore
 // GCed, the contents may comes from C/gssapi calls, and therefore must be
@@ -79,3 +82,40 @@ type QOP C.OM_uint32
 // A struct pointer technically, but not really used yet, and it's a static,
 // non-releaseable struct so an alias will suffice
 type ChannelBindings C.gss_channel_bindings_t
+
+// TODO key value set for configuration to the "gss_[Acquire,Add]_cred_from" and gss_save_cred[.into]"
+// key value set should be dictionary, when sent to wrapper, then malloc array of pointers to key_value_element_structs, then malloc space for char[] for all keys and values
+// then copy data, and link all pointers to correct memory locations.
+type KeyValueSet map[string]string
+
+// outPointer must be recursively C.free'd by caller.
+func (kvs *KeyValueSet) C_gss_const_key_value_set_t() (C.gss_const_key_value_set_t) {
+
+	// out pointer is not a gss_const_key_value_set_t here, because we need to change it's contents.
+	var t C.gss_key_value_set_desc
+	var e *C.gss_key_value_element_desc
+	outPointer := (*C.gss_key_value_set_desc) (C.malloc(C.size_t(unsafe.Sizeof(t))))
+	(*outPointer).count=C.OM_uint32(len(*kvs))
+	(*outPointer).elements=(*C.gss_key_value_element_desc) (C.malloc(C.size_t(len(*kvs)) * C.size_t(uintptr(unsafe.Sizeof(*e)))))
+	e = (*outPointer).elements
+	for k,v := range *kvs {
+		(*e).key=C.CString(k)
+		(*e).value=C.CString(v)
+		e=(*C.gss_key_value_element_desc)( unsafe.Pointer( uintptr( unsafe.Pointer(e))+unsafe.Sizeof(*e) ) )
+	}
+
+	// cast to gss_const_key_value_set_t at return.
+	return outPointer
+}
+
+func Free_C_gss_const_key_value_set_t(C_gss_const_key_value_set_t C.gss_const_key_value_set_t) {
+	var i C.OM_uint32
+	var p *C.gss_key_value_element_desc = (*C_gss_const_key_value_set_t).elements
+	for i= 0; i < (*C_gss_const_key_value_set_t).count; i++ {
+		C.free(unsafe.Pointer((*p).key))
+		C.free(unsafe.Pointer((*p).value))
+		p=(*C.gss_key_value_element_desc)( unsafe.Pointer( uintptr( unsafe.Pointer(p))+unsafe.Sizeof(*p) ) )
+	}
+	C.free(unsafe.Pointer((*C_gss_const_key_value_set_t).elements))
+	C.free(unsafe.Pointer(C_gss_const_key_value_set_t))
+}
