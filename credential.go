@@ -479,6 +479,7 @@ import "C"
 
 import (
 	"C"
+	"fmt"
 	"time"
 )
 
@@ -500,10 +501,13 @@ func (lib *Lib) AcquireCred(desiredName *Name, timeReq time.Duration,
 	actualMechs = lib.NewOIDSet()
 	outputCredHandle = lib.NewCredId()
 	timerec := C.OM_uint32(0)
-
+	var name C.gss_name_t = nil
+	if desiredName != nil {
+		name = desiredName.C_gss_name_t
+	}
 	maj := C.wrap_gss_acquire_cred(lib.Fp_gss_acquire_cred,
 		&min,
-		desiredName.C_gss_name_t,
+		name,
 		C.OM_uint32(timeReq.Seconds()),
 		desiredMechs.C_gss_OID_set,
 		C.gss_cred_usage_t(credUsage),
@@ -801,7 +805,7 @@ func (lib *Lib) StoreCred(cred *CredId, inputUsage CredUsage, desiredMech *OID,
 	usageStored CredUsage, err error) {
 
 	return cred.Store(inputUsage, desiredMech,
-		overwriteCred, defaultCred);
+		overwriteCred, defaultCred)
 }
 
 func (cred *CredId) Store(inputUsage CredUsage, desiredMech *OID,
@@ -970,9 +974,26 @@ func (lib *Lib) AddCredWithPassword(inputCredHandle *CredId, desiredName *Name,
 	return outputCredHandle, actualMechs, initiatorTimeRec, acceptorTimeRec, err
 }
 
-func (lib *Lib) AcquireCredWithKinit(desiredName *Name, timeReq time.Duration,
+var krbFuncNames = []string{
+	"krb5_init_context",
+	"krb5_free_context",
+	"krb5_parse_name",
+}
+
+// before calling this function, service/username need to be connonicalized, and imported into gssapi library.
+func (lib *Lib) AcquireCredWithKinit(desiredName *Name, ktName string, timeReq time.Duration,
 	desiredMechs *OIDSet, credUsage CredUsage) (outputCredHandle *CredId,
 	actualMechs *OIDSet, timeRec time.Duration, err error) {
+
 	//TODO kinit Stuff
+	lib.Debug(fmt.Sprintf("In AcquireCredWithKinit()")) // print at opposite severity levels
+	lib.Emerg(fmt.Sprintf("In AcquireCredWithKinit()"))
+
+	// TODO: need k5_out_cache_name
+	if (credUsage == GSS_C_INITIATE || credUsage == GSS_C_BOTH){
+		//KINIT so that we can acquire creds for "GSS_C_BOTH" or "GSS_C_INITIATE" usages
+		// here be low level krb5 library calls, do not export these.
+		lib.Kinit(desiredName, ktName, timeReq, desiredMechs, credUsage)
+	}
 	return lib.AcquireCred(desiredName, timeReq, desiredMechs, credUsage)
 }

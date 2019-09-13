@@ -219,6 +219,7 @@ type Lib struct {
 
 	handle unsafe.Pointer
 
+	krb krbFtable
 	ftable
 	constants
 }
@@ -288,7 +289,16 @@ func Load(o *Options) (*Lib, error) {
 		lib.Unload()
 		return nil, err
 	}
-
+	err = (&(lib.krb)).Load(lib.handle)
+	if err != nil {
+		lib.Debug(fmt.Sprintf("krb.Load() returned error: %v\n",err))
+		lib.Unload()
+		return nil, err
+	}
+	if lib.krb.ctx == nil {
+		lib.Debug("krb.Load failed to mutate.\n")
+	}
+	lib.Debug("krb.Load() succeeded:\n")
 	lib.initConstants()
 
 	return lib, nil
@@ -309,6 +319,7 @@ func (lib *Lib) Unload() error {
 	}
 
 	lib.handle = nil
+	(&(lib.krb)).Unload()
 	return nil
 }
 
