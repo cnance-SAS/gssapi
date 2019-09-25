@@ -458,9 +458,6 @@ import "C"
 import (
 	"errors"
 	"fmt"
-	"io"
-	"log"
-	"os"
 	"time"
 	"unsafe"
 )
@@ -477,97 +474,138 @@ func loadFunc(handle unsafe.Pointer, name string) (fp unsafe.Pointer, err error)
 }
 
 func (k5 *krbFtable) krbPopulateFunctions(handle unsafe.Pointer) (err error) {
-	DebugLogger.Printf("gssapi.Lib.krb.krbPopulateFuncation: entry\n")
-	defer DebugLogger.Printf("gssapi.Lib.krb.krbPopulateFunctions: exit\n")
-
-	err = nil
-	if k5.fp_krb5_init_context, err = loadFunc(handle, "krb5_init_context"); err != nil { return err	}
-	if k5.fp_krb5_free_context, err = loadFunc(handle, "krb5_free_context"); err != nil { return err }
-	if k5.fp_krb5_parse_name, err = loadFunc(handle, "krb5_parse_name"); err != nil { return err }
-	if k5.fp_krb5_free_principal, err = loadFunc(handle, "krb5_free_principal"); err != nil { return err }
-	if k5.fp_krb5_kt_resolve, err = loadFunc(handle, "krb5_kt_resolve"); err != nil { return err }
-	if k5.fp_krb5_kt_default, err = loadFunc(handle, "krb5_kt_default"); err != nil { return err }
-	if k5.fp_krb5_kt_close, err = loadFunc(handle, "krb5_kt_close"); err != nil { return err }
-	if k5.fp_krb5_cc_default_name, err = loadFunc(handle, "krb5_cc_default_name"); err != nil { return err }
-	if k5.fp_krb5_cc_resolve, err = loadFunc(handle, "krb5_cc_resolve"); err != nil { return err }
-	if k5.fp_krb5_cc_new_unique, err = loadFunc(handle, "krb5_cc_new_unique"); err != nil { return err }
-	if k5.fp_krb5_cc_get_name, err = loadFunc(handle, "krb5_cc_get_name"); err != nil { return err }
-	if k5.fp_krb5_cc_initialize, err = loadFunc(handle, "krb5_cc_initialize"); err != nil { return err }
-	if k5.fp_krb5_cc_destroy, err = loadFunc(handle, "krb5_cc_destroy"); err != nil { return err }
-	if k5.fp_krb5_cc_get_principal, err = loadFunc(handle, "krb5_cc_get_principal"); err != nil { return err }
-	if k5.fp_krb5_unparse_name, err = loadFunc(handle, "krb5_unparse_name"); err != nil { return err }
-	if k5.fp_krb5_free_unparsed_name, err = loadFunc(handle, "krb5_free_unparsed_name"); err != nil { return err }
-	if k5.fp_krb5_get_init_creds_opt_alloc, err = loadFunc(handle, "krb5_get_init_creds_opt_alloc"); err != nil { return err }
-	if k5.fp_krb5_get_init_creds_opt_free, err = loadFunc(handle, "krb5_get_init_creds_opt_free"); err != nil { return err }
-	if k5.fp_krb5_get_init_creds_opt_set_out_ccache, err = loadFunc(handle, "krb5_get_init_creds_opt_set_out_ccache"); err != nil { return err }
-	if k5.fp_krb5_get_init_creds_opt_set_forwardable, err = loadFunc(handle, "krb5_get_init_creds_opt_set_forwardable"); err != nil { return err }
-	if k5.fp_krb5_verify_init_creds, err = loadFunc(handle, "krb5_verify_init_creds"); err != nil { return err }
-	if k5.fp_krb5_free_cred_contents, err = loadFunc(handle, "krb5_free_cred_contents"); err != nil { return err }
-	if k5.fp_krb5_get_init_creds_opt_set_address_list, err = loadFunc(handle, "krb5_get_init_creds_opt_set_address_list"); err != nil { return err }
-	if k5.fp_krb5_get_init_creds_opt_set_proxiable, err = loadFunc(handle, "krb5_get_init_creds_opt_set_proxiable"); err != nil { return err }
-	if k5.fp_krb5_get_init_creds_keytab, err = loadFunc(handle, "krb5_get_init_creds_keytab"); err != nil { return err }
-	if k5.fp_krb5_kt_default_name, err = loadFunc(handle, "krb5_kt_default_name"); err != nil { return err }
-	if k5.fp_krb5_free_error_message, err = loadFunc(handle, "krb5_free_error_message"); err != nil { return err }
-	if k5.fp_krb5_get_error_message, err = loadFunc(handle, "krb5_get_error_message"); err != nil { return err }
+	if k5.fp_krb5_init_context, err = loadFunc(handle, "krb5_init_context"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_free_context, err = loadFunc(handle, "krb5_free_context"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_parse_name, err = loadFunc(handle, "krb5_parse_name"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_free_principal, err = loadFunc(handle, "krb5_free_principal"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_kt_resolve, err = loadFunc(handle, "krb5_kt_resolve"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_kt_default, err = loadFunc(handle, "krb5_kt_default"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_kt_close, err = loadFunc(handle, "krb5_kt_close"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_cc_default_name, err = loadFunc(handle, "krb5_cc_default_name"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_cc_resolve, err = loadFunc(handle, "krb5_cc_resolve"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_cc_new_unique, err = loadFunc(handle, "krb5_cc_new_unique"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_cc_get_name, err = loadFunc(handle, "krb5_cc_get_name"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_cc_initialize, err = loadFunc(handle, "krb5_cc_initialize"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_cc_destroy, err = loadFunc(handle, "krb5_cc_destroy"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_cc_get_principal, err = loadFunc(handle, "krb5_cc_get_principal"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_unparse_name, err = loadFunc(handle, "krb5_unparse_name"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_free_unparsed_name, err = loadFunc(handle, "krb5_free_unparsed_name"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_get_init_creds_opt_alloc, err = loadFunc(handle, "krb5_get_init_creds_opt_alloc"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_get_init_creds_opt_free, err = loadFunc(handle, "krb5_get_init_creds_opt_free"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_get_init_creds_opt_set_out_ccache, err = loadFunc(handle, "krb5_get_init_creds_opt_set_out_ccache"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_get_init_creds_opt_set_forwardable, err = loadFunc(handle, "krb5_get_init_creds_opt_set_forwardable"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_verify_init_creds, err = loadFunc(handle, "krb5_verify_init_creds"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_free_cred_contents, err = loadFunc(handle, "krb5_free_cred_contents"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_get_init_creds_opt_set_address_list, err = loadFunc(handle, "krb5_get_init_creds_opt_set_address_list"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_get_init_creds_opt_set_proxiable, err = loadFunc(handle, "krb5_get_init_creds_opt_set_proxiable"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_get_init_creds_keytab, err = loadFunc(handle, "krb5_get_init_creds_keytab"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_kt_default_name, err = loadFunc(handle, "krb5_kt_default_name"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_free_error_message, err = loadFunc(handle, "krb5_free_error_message"); err != nil {
+		return err
+	}
+	if k5.fp_krb5_get_error_message, err = loadFunc(handle, "krb5_get_error_message"); err != nil {
+		return err
+	}
 	return err
 }
 
 type krbFtable struct {
-	ctx C.krb5_context
-	fp_krb5_init_context unsafe.Pointer
-	fp_krb5_free_context unsafe.Pointer
-	fp_krb5_parse_name unsafe.Pointer
-	fp_krb5_free_principal unsafe.Pointer
-	fp_krb5_kt_resolve unsafe.Pointer
-	fp_krb5_kt_default unsafe.Pointer
-	fp_krb5_kt_close unsafe.Pointer
-	fp_krb5_cc_default_name unsafe.Pointer
-	fp_krb5_cc_resolve unsafe.Pointer
-	fp_krb5_cc_new_unique unsafe.Pointer
-	fp_krb5_cc_get_name unsafe.Pointer
-	fp_krb5_cc_initialize unsafe.Pointer
-	fp_krb5_cc_destroy unsafe.Pointer
-	fp_krb5_cc_get_principal unsafe.Pointer
-	fp_krb5_unparse_name unsafe.Pointer
-	fp_krb5_free_unparsed_name unsafe.Pointer
-	fp_krb5_get_init_creds_opt_alloc unsafe.Pointer
-	fp_krb5_get_init_creds_opt_free unsafe.Pointer
-	fp_krb5_get_init_creds_opt_set_out_ccache unsafe.Pointer
-	fp_krb5_get_init_creds_opt_set_forwardable unsafe.Pointer
-	fp_krb5_verify_init_creds unsafe.Pointer
-	fp_krb5_free_cred_contents unsafe.Pointer
+	ctx                                         C.krb5_context
+	fp_krb5_init_context                        unsafe.Pointer
+	fp_krb5_free_context                        unsafe.Pointer
+	fp_krb5_parse_name                          unsafe.Pointer
+	fp_krb5_free_principal                      unsafe.Pointer
+	fp_krb5_kt_resolve                          unsafe.Pointer
+	fp_krb5_kt_default                          unsafe.Pointer
+	fp_krb5_kt_close                            unsafe.Pointer
+	fp_krb5_cc_default_name                     unsafe.Pointer
+	fp_krb5_cc_resolve                          unsafe.Pointer
+	fp_krb5_cc_new_unique                       unsafe.Pointer
+	fp_krb5_cc_get_name                         unsafe.Pointer
+	fp_krb5_cc_initialize                       unsafe.Pointer
+	fp_krb5_cc_destroy                          unsafe.Pointer
+	fp_krb5_cc_get_principal                    unsafe.Pointer
+	fp_krb5_unparse_name                        unsafe.Pointer
+	fp_krb5_free_unparsed_name                  unsafe.Pointer
+	fp_krb5_get_init_creds_opt_alloc            unsafe.Pointer
+	fp_krb5_get_init_creds_opt_free             unsafe.Pointer
+	fp_krb5_get_init_creds_opt_set_out_ccache   unsafe.Pointer
+	fp_krb5_get_init_creds_opt_set_forwardable  unsafe.Pointer
+	fp_krb5_verify_init_creds                   unsafe.Pointer
+	fp_krb5_free_cred_contents                  unsafe.Pointer
 	fp_krb5_get_init_creds_opt_set_address_list unsafe.Pointer
-	fp_krb5_get_init_creds_opt_set_proxiable unsafe.Pointer
-	fp_krb5_get_init_creds_keytab unsafe.Pointer
-	fp_krb5_kt_default_name unsafe.Pointer
-	fp_krb5_get_error_message unsafe.Pointer
-	fp_krb5_free_error_message unsafe.Pointer
+	fp_krb5_get_init_creds_opt_set_proxiable    unsafe.Pointer
+	fp_krb5_get_init_creds_keytab               unsafe.Pointer
+	fp_krb5_kt_default_name                     unsafe.Pointer
+	fp_krb5_get_error_message                   unsafe.Pointer
+	fp_krb5_free_error_message                  unsafe.Pointer
 }
 
-var DebugLogger *log.Logger
-
 func (k5 *krbFtable) Load(handle unsafe.Pointer) error {
-	f,_:= os.Create("./test.log")
-	DebugLogger = log.New(io.MultiWriter(f,os.Stderr),"CHNAC: ",0)
-
-	DebugLogger.Printf("gssapi.Lib.krb.Load: entry\n")
-	defer DebugLogger.Printf("gssapi.Lib.krb.Load: exit\n")
 	err := k5.krbPopulateFunctions(handle)
 	if err != nil {
-		DebugLogger.Printf("  returned error: %v",err)
 		return err
 	}
-	ov:=k5.ctx
+	ov := k5.ctx
 	err = k5.initContext()
 	if err != nil {
-		DebugLogger.Printf("  returned error: %v",err)
 		return err
 	}
 	if k5.ctx == ov {
-		DebugLogger.Printf("context not created\n")
 		return errors.New("krb5 context not created")
 	}
-	DebugLogger.Printf("  returned error: %v",nil)
 	return nil
 }
 
@@ -575,37 +613,44 @@ func (k5 *krbFtable) Unload() {
 	k5.freeContext()
 }
 
-func (lib *Lib) Kinit (desiredName *Name, ktName string, timeReq time.Duration,
-	desiredMechs *OIDSet, credUsage CredUsage) (C.krb5_ccache, error) {
+func (lib *Lib) Kinit(desiredName *Name, ktName string, timeReq time.Duration,
+	desiredMechs *OIDSet, credUsage CredUsage) (cred C.krb5_ccache, err error) {
 
 	// try to Kinit with desired name (might be nil), nil might still work, so try
-	cred, err := lib.krb.Kinit(desiredName,ktName,timeReq,desiredMechs,credUsage)
+	cred, err = lib.krb.Kinit(desiredName, ktName, timeReq, desiredMechs, credUsage)
 	if err != nil {
-		DebugLogger.Printf( "gssapilib.Lib.Kinit: first kinit returned err:\n  %v", err)
+		lib.Debug(fmt.Sprintf("gssapilib.Lib.Kinit: first kinit returned err:\n  ", err))
 		if desiredName == nil || desiredName.C_gss_name_t == nil {
-			DebugLogger.Printf( "gssapilib.Lib.Kinit: and desired name is nil\n")
+			lib.Debug("gssapilib.Lib.Kinit: and desired name is nil\n")
 			// Kinit failed, and desired name is nil,
 			// Find default SPN from keytab
-			tCred, mechs, _, err := lib.AcquireCred(desiredName, timeReq, desiredMechs, GSS_C_ACCEPT)
+			tCred, mechs, _, err1 := lib.AcquireCred(desiredName, timeReq, desiredMechs, GSS_C_ACCEPT)
+			err = err1
 			if err == nil {
+				defer func() {_ = tCred.Release()}()
 				_ = mechs.Release()
-				defaultSPN, _, _, oidSet, err := lib.InquireCred(tCred)
+				defaultSPN, _, _, oidSet, err1 := lib.InquireCred(tCred)
+				err = err1
 				if err == nil {
 					_ = oidSet.Release()
-					DebugLogger.Printf( "gssapilib.Lib.Kinit: Found principal %s in keytab\n", defaultSPN.String())
-					defer func() { _ = defaultSPN.Release() } ()
-					cred, err = lib.krb.Kinit(defaultSPN,ktName,timeReq,desiredMechs,credUsage)
+					lib.Debug(fmt.Sprintf("gssapilib.Lib.Kinit: Found principal %s in keytab\n", defaultSPN.String()))
+					defer func() { _ = defaultSPN.Release() }()
+					cred, err = lib.krb.Kinit(defaultSPN, ktName, timeReq, desiredMechs, credUsage)
+					if err != nil {
+						lib.Debug(fmt.Sprintf("gssapi.Lib.Kinit: second Kinit error=\n%s\n", err.Error()))
+					} else {
+						lib.Debug("gssapi.lib.Kinit: second Kinit succeeded\n")
+					}
 				} else {
-					DebugLogger.Printf( "gssapilib.Lib.Kinit: Error InquireCred to infer principal name.\n")
+					lib.Debug("gssapilib.Lib.Kinit: Error InquireCred to infer principal name.\n")
 					return nil, err //TODO:  This is an error case.
 				}
-				_ = tCred.Release()
 			} else {
-				DebugLogger.Printf( "gssapilib.Lib.Kinit: Failed to AcquireCred in order to find SPN.\n")
-				return nil, err// todo: this is an error case.
+				lib.Debug("gssapilib.Lib.Kinit: Failed to AcquireCred in order to find SPN.\n")
+				return nil, err // todo: this is an error case.
 			}
 		} else {
-			DebugLogger.Printf("Failed to Kinit for %s\n", desiredName.String())
+			lib.Debug(fmt.Sprintf("Failed to Kinit for %s\n", desiredName.String()))
 		}
 	}
 
@@ -615,126 +660,79 @@ func (lib *Lib) Kinit (desiredName *Name, ktName string, timeReq time.Duration,
 // global error, so caller can handle this case.
 var ErrKinitNeedPrincipal = errors.New("kinit failed, Principal not supplied")
 
-func (k5 krbFtable) Kinit (desiredName *Name, ktName string, timeReq time.Duration,
+func (k5 krbFtable) Kinit(desiredName *Name, ktName string, timeReq time.Duration,
 	desiredMechs *OIDSet, credUsage CredUsage) (ccache C.krb5_ccache, err error) {
 
-	DebugLogger.Printf("Lib.krb.Kinit: entry\n")
-	defer DebugLogger.Printf("Lib.krb.Kinit: exit\n")
 	var k5Me C.krb5_principal = nil
 	if desiredName != nil && desiredName.C_gss_name_t != nil {
 		name := desiredName.String()
 		if k5Me, err = k5.parseName(name); err != nil {
-			DebugLogger.Printf("Error with parseName\n  %v\n", err)
 			return nil, err
 			// todo error
 		}
 		defer func() {
-			DebugLogger.Printf("defer: k5.freePrincipal(%p)\n",k5Me)
 			k5.freePrincipal(k5Me)
 		}()
 	} else {
-		DebugLogger.Printf("No desiredName provided\n")
 		//error maybe
-	}
-	if k5Me == nil {
-		DebugLogger.Printf("AcquireCredWithKinit: no principal found\n")
-	} else {
-		DebugLogger.Printf("AcquireCredWithKinit: found a principal\n")
 	}
 
 	var keytab C.krb5_keytab
 	if ktName != "" {
 		if keytab, err = k5.ktResolve(ktName); err != nil {
-			DebugLogger.Printf("AcquireCredWithKinit: Failed to resolve keytab %s\n", ktName)
-			return nil, fmt.Errorf("AcquireCredWithKinit: Error while resolving keytab: %s\n", ktName)
+			return nil, fmt.Errorf("Lib.krb5.Kinit: Error while resolving keytab: %s\n", ktName)
 		}
 	} else {
-		defaultKeytab, err := k5.ktDefaultName()
-		if err != nil {
-			DebugLogger.Printf("AcquireCredWithKinit: Failed to get defaultKeytabName\n")
-		}
-		if keytab, err = k5.ktDefault(); err != nil  {
-			DebugLogger.Printf("AcquireCredWithKinit: Failed to resolve default keytab: %s\n%v", defaultKeytab, err)
+		if keytab, err = k5.ktDefault(); err != nil {
 			return nil, err
 		}
 	}
-	DebugLogger.Printf( "AcquireCredWithKinit: kt_resolve worked\n" )
-	defer func() {
-		DebugLogger.Printf("defer: k5.ktClose(%p)\n", keytab)
-		e := k5.ktClose(keytab)
-		if e != nil {
-			DebugLogger.Printf( "error with ktClose: %v\n", e)
-		}
-	}()
+	defer func() { _ = k5.ktClose(keytab) }()
 
-	k5_out_cache_name := k5.ccDefaultName()
+	k5OutCacheName := k5.ccDefaultName()
 	// k5Ctx cleans up the default Name
 	var k5OutCc C.krb5_ccache
-	k5OutCc, err = k5.ccResolve(k5_out_cache_name);
-	if (err != nil ) { // ccResolve failure
-		DebugLogger.Printf("AcquireCredWithKinit: Error resolving cred cache %s\n  %v", k5_out_cache_name, err)
+	k5OutCc, err = k5.ccResolve(k5OutCacheName)
+	if err != nil { // ccResolve failure
 		if k5Me != nil { // but I have principal name from user
 			// initialize ccache
 			if k5OutCc, err = k5.ccNewUnique("FILE", ""); err != nil {
-				DebugLogger.Printf("AcquireCredWithKinit: Could not create new unique FILE cred cache\n  %v", err)
 				return nil, err
 			} else {
 				// getName is just for debugging
-				k5_out_cache_name = k5.ccGetName(k5OutCc)
-				DebugLogger.Printf("AcquireCredWithKinit: Created new cred cache FILE: %s\n", k5_out_cache_name)
+				k5OutCacheName = k5.ccGetName(k5OutCc)
 				if err = k5.ccInitialize(k5OutCc, k5Me); err != nil {
-					k5.ccDestroy(k5OutCc)
-					DebugLogger.Printf("AcquireCredWithKinit: Error initializing ccache for %s\n  %v", desiredName.String(), err)
+					_ = k5.ccDestroy(k5OutCc)
 					return nil, err
 				}
 			}
 		} else { // no principal name
-			DebugLogger.Printf("AcquireCredWithKinit: Error resolving default cred cache, and no principal name supplied, prolem?\n")
-			// This triggers Lib.Kinit to open default keytab and gater principal name from there.
-			return nil, ErrKinitNeedPrincipal
-		}
-	} else { // happy resolving cache: may or may not have principal.
-		// debugging, log which cred cache, and principal name.
-		DebugLogger.Printf( "AcquireCredWithKinit: resolved cred cache %s\n", k5_out_cache_name)
-		var p2 C.krb5_principal
-		if p2, err = k5.ccGetPrincipal(k5OutCc); err == nil {
-			var p2Name string
-			if p2Name, err = k5.unparseName(p2); err == nil {
-				DebugLogger.Printf( "AcquireCredWithKinit: for %s\n", p2Name)
-			} else {
-				DebugLogger.Printf( "AcquireCredWithKinit: failed unparseName\n%v  \n",err)
-			}
-			defer func() {
-				DebugLogger.Printf("defer: k5.freePrincipal(%p)\n", p2)
-				k5.freePrincipal(p2)
-			}()
-		} else {
-			DebugLogger.Printf( "AcquireCredWithKinit: failed ccGetPrincipal\n  %v", err)
-		}
-		if k5Me == nil && p2 != nil {
-			DebugLogger.Printf("using principal from cache file\n")
-			k5Me = p2
-		} else if k5Me == nil {
-			DebugLogger.Printf("AcquireCredWithKinit: no principal in cred cache, and none supplied\n")
 			// This triggers Lib.Kinit to open default keytab and gather principal name from there.
 			return nil, ErrKinitNeedPrincipal
 		}
-
+	} else { // happy resolving cache: may or may not have principal.
+		var p2 C.krb5_principal
+		if p2, err = k5.ccGetPrincipal(k5OutCc); err == nil {
+			defer func() { k5.freePrincipal(p2) }()
+		}
+		if k5Me == nil && p2 != nil {
+			k5Me = p2
+		} else if k5Me == nil {
+			// This triggers Lib.Kinit to open default keytab and gather principal name from there.
+			return nil, ErrKinitNeedPrincipal
+		}
 	}
 
 	var options *C.krb5_get_init_creds_opt
 	if options, err = k5.getInitCredsOptAlloc(); err != nil {
-		k5.ccDestroy(k5OutCc)
-		DebugLogger.Printf("AcquireCredWithKinit: Failed to allocate intial cred options struct.\n")
+		_ = k5.ccDestroy(k5OutCc)
 		return nil, err
 	}
 	defer func() {
-		DebugLogger.Printf("defer: k5.getInitCredsOptFree(%p)\n", options)
 		k5.getInitCredsOptFree(options)
 	}()
 
 	if err = k5.getInitCredsOptSetOutCcache(options, k5OutCc); err != nil {
-		DebugLogger.Printf("AcquireCredWithKinit: Failed to set \"out ccache\" initial Cred Option\n")
 		return nil, err
 	}
 	//krb5_get_init_creds_opt_set_tkt_life(options, opts->lifetime);
@@ -764,24 +762,22 @@ func (k5 krbFtable) Kinit (desiredName *Name, ktName string, timeReq time.Durati
 	//}
 
 	// Get the creds
-	var myCreds C.krb5_creds
-	myCreds, err = k5.getInitCredsKeytab(k5Me, keytab,
+	var myCred C.krb5_creds
+	myCred, err = k5.getInitCredsKeytab(k5Me, keytab,
 		time.Duration(0), "", options)
 	if nil != err {
-		k5.ccDestroy(k5OutCc)
-		DebugLogger.Printf("AcquireCredWithKinit: FAILED krb5_get_init_creds_keytab\n  %v\n", err )
+		_ = k5.ccDestroy(k5OutCc)
 		return nil, err
 	}
-	defer k5.freeCredContents(&myCreds);
-	// Verify the creds, todo: needed?
-	err = k5.verifyInitCreds(&myCreds, nil, nil, nil, nil)
+	defer k5.freeCredContents(&myCred)
+	// Verify the cred, todo: needed?
+	err = k5.verifyInitCreds(&myCred, nil, nil, nil, nil)
 	if err != nil {
-		defer func () { _ = k5.ccDestroy(k5OutCc) } ()
-		DebugLogger.Printf("AcquireCredWithKinit: Failed to verify_init_creds\n")
+		defer func() { _ = k5.ccDestroy(k5OutCc) }()
 		return nil, err
 	}
-	// store the creds, I set the option above, so this should happen already
-	//C.krb5_cc_store_cred(k5Ctx, k5OutCc, &myCreds)
+	// store the cred, I set the option above, so this should happen already
+	//C.krb5_cc_store_cred(k5Ctx, k5OutCc, &myCred)
 	return k5OutCc, err
 }
 
@@ -797,11 +793,11 @@ func (k5 *krbFtable) initContext() error {
 func (k5 *krbFtable) freeContext() {
 	if k5.ctx != nil {
 		C.wrap_krb5_free_context(k5.fp_krb5_free_context, k5.ctx)
-		k5.ctx=nil
+		k5.ctx = nil
 	}
 }
 
-func (k5 krbFtable) parseName(name string) (principal C.krb5_principal, err error){
+func (k5 krbFtable) parseName(name string) (principal C.krb5_principal, err error) {
 	cstr := C.CString(name)
 	defer C.free(unsafe.Pointer(cstr))
 	err = nil
@@ -824,12 +820,12 @@ func (k5 krbFtable) freePrincipal(principal C.krb5_principal) {
 	}
 }
 
-func (k5 krbFtable) ktResolve(ktName string) (keytab C.krb5_keytab, err error) {
-	kt_name := C.CString(ktName)
-	defer C.free(unsafe.Pointer(kt_name))
+func (k5 krbFtable) ktResolve(Name string) (keytab C.krb5_keytab, err error) {
+	ktName := C.CString(Name)
+	defer C.free(unsafe.Pointer(ktName))
 	ret := C.wrap_krb5_kt_resolve(k5.fp_krb5_kt_resolve,
 		k5.ctx,
-		kt_name,
+		ktName,
 		&keytab)
 	if 0 != ret {
 		err = k5.getErrorMessage(ret)
@@ -881,7 +877,7 @@ func (k5 krbFtable) ccResolve(s string) (cache C.krb5_ccache, err error) {
 
 func (k5 krbFtable) ccNewUnique(tpe string, hint string) (cache C.krb5_ccache, err error) {
 	tCstr := C.CString(tpe)
-	hCstr:= C.CString(hint)
+	hCstr := C.CString(hint)
 	defer C.free(unsafe.Pointer(tCstr))
 	defer C.free(unsafe.Pointer(hCstr))
 
@@ -896,7 +892,7 @@ func (k5 krbFtable) ccNewUnique(tpe string, hint string) (cache C.krb5_ccache, e
 	return cache, err
 }
 
-func (k5 *krbFtable) ccDestroy(cache C.krb5_ccache) error{
+func (k5 *krbFtable) ccDestroy(cache C.krb5_ccache) error {
 	if nil != cache {
 		ret := C.wrap_krb5_cc_destroy(k5.fp_krb5_cc_destroy,
 			k5.ctx,
@@ -921,7 +917,7 @@ func (k5 krbFtable) ccInitialize(ccache C.krb5_ccache, principal C.krb5_principa
 
 func (k5 krbFtable) ccGetName(ccache C.krb5_ccache) string {
 	// ccache retains ownership of cstr's memory, we do not need to clean up.
-	cstr:=C.wrap_krb5_cc_get_name(k5.fp_krb5_cc_get_name,
+	cstr := C.wrap_krb5_cc_get_name(k5.fp_krb5_cc_get_name,
 		k5.ctx,
 		ccache)
 	return C.GoString(cstr)
@@ -1001,13 +997,13 @@ func (k5 krbFtable) getInitCredsKeytab(principal C.krb5_principal,
 	inTktService string,
 	opt *C.krb5_get_init_creds_opt) (creds C.krb5_creds, err error) {
 
-	at:=C.int(startAt.Nanoseconds() >> 32)
+	at := C.int(startAt.Nanoseconds() >> 32)
 	cstr := C.CString(inTktService)
 	defer C.free(unsafe.Pointer(cstr))
 	if inTktService == "" {
 		cstr = nil
 	}
-	ret:= C.wrap_krb5_get_init_creds_keytab(k5.fp_krb5_get_init_creds_keytab,
+	ret := C.wrap_krb5_get_init_creds_keytab(k5.fp_krb5_get_init_creds_keytab,
 		k5.ctx,
 		&creds,
 		principal,
@@ -1044,7 +1040,7 @@ func (k5 krbFtable) verifyInitCreds(creds *C.krb5_creds, server C.krb5_principal
 	return nil
 }
 
-func (k5 krbFtable) ktDefaultName() (string, error){
+func (k5 krbFtable) ktDefaultName() (string, error) {
 	cstr := C.malloc(1024)
 	if cstr == nil {
 		return "", ErrMallocFailed
@@ -1068,7 +1064,7 @@ func (k5 krbFtable) getErrorMessage(errorCode C.krb5_error_code) error {
 	defer C.wrap_krb5_free_error_message(k5.fp_krb5_free_error_message,
 		k5.ctx,
 		cstr)
-	return fmt.Errorf("%s",C.GoString(cstr))
+	return fmt.Errorf("%s", C.GoString(cstr))
 }
 
 func (k5 *krbFtable) getInitCredsOptFree(opt *C.krb5_get_init_creds_opt) {
