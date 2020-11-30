@@ -784,8 +784,7 @@ func (k5 krbFtable) Kinit(desiredName *Name, ktName string, timeReq time.Duratio
 func (k5 *krbFtable) initContext() error {
 	ret := C.wrap_krb5_init_context(k5.fp_krb5_init_context, &(k5.ctx))
 	if 0 != ret {
-		//return errors.New("Failed to init krb library\n")
-		return k5.getErrorMessage(ret)
+		return fmt.Errorf("Failed to init krb library\n\t%s", k5.getErrorMessage(ret).Error())
 	}
 	return nil
 }
