@@ -143,7 +143,6 @@ wrap_gss_inquire_context(void *fp,
 		open);
 }
 
-
 */
 import "C"
 

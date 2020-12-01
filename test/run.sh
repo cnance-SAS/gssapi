@@ -6,16 +6,17 @@ result="NOT OK FAILED"
 
 # boot2docker doesn't seem to like /tmp so use the home direcotry for the build
 BASE_DIR="$(cd .. && pwd)"
-export TEST_DIR="$HOME/tmp/$(uuidgen)"
+export TEST_DIR="$HOME/tmp/$(uuidgen)/$(basename $BASE_DIR)"
 mkdir -p -- "$TEST_DIR"
-cp -R "$BASE_DIR" "$TEST_DIR"
-DOCKER_DIR="$TEST_DIR/gssapi/test/docker"
+cp -R "$BASE_DIR"/* "$TEST_DIR"
+DOCKER_DIR="$TEST_DIR/test/docker"
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
         DOCKER=docker
 else
-        DOCKER='sudo docker'
+        id -nG | grep docker &>/dev/null && DOCKER=docker || DOCKER='sudo docker'
 fi
+SHASUM=$(which shasum 2>/dev/null) || SHASUM=$(which sha256sum 2>/dev/null)
 
 function log() {
         printf "go-gssapi-test: %s\n" "$*" >&2
@@ -50,7 +51,6 @@ function cleanup() {
         fi
 
         cleanup_containers
-
         log "Clean up build directory"
         rm -rf -- "${TEST_DIR:?}"
 
@@ -63,7 +63,6 @@ function build_image() {
         func="$3"
         img="go-gssapi-test-${name}"
         image="$($DOCKER images --quiet ${img})"
-
         if [[ "${REUSE_DOCKER_IMAGES:-}" != "" && "$image" != "" ]]; then
                 log "Reuse cached docker image ${img} ${image}"
         else
@@ -71,7 +70,6 @@ function build_image() {
                 if [[ "$func" != "" ]]; then
                         (${func})
                 fi
-
                 $DOCKER build \
                         --rm \
                         --quiet \
@@ -131,7 +129,7 @@ function wait_until_available() {
 trap 'cleanup' INT TERM EXIT
 cleanup_containers
 
-env_suffix=$(/bin/echo "${REALM_NAME}-${SERVICE_NAME}" | shasum | cut -f1 -d ' ')
+env_suffix=$(/bin/echo "${REALM_NAME}-${SERVICE_NAME}" | $SHASUM | cut -f1 -d ' ')
 
 # KDC
 if [[ "${EXT_KDC_HOST}" == "" ]]; then
@@ -176,7 +174,7 @@ run_image "service" \
         "service-${env_suffix}" \
         "--detach \
         $DOCKER_KDC_OPTS \
-        --volume $TEST_DIR/gssapi:/opt/go/src/github.com/apcera/gssapi" >/dev/null
+        --volume $TEST_DIR:/opt/go/src/github.com/apcera/gssapi" >/dev/null
 map_ports "service" 80
 wait_until_available "service" $SERVICE_PORT_80_TCP_ADDR $SERVICE_PORT_80_TCP_PORT
 
@@ -187,7 +185,7 @@ if [[ "$OSTYPE" != "darwin"* || "$CLIENT_IN_CONTAINER" != "" ]]; then
                 "client" \
                 "--link=service:service \
                 $DOCKER_KDC_OPTS \
-                --volume $TEST_DIR/gssapi:/opt/go/src/github.com/apcera/gssapi"
+                --volume $TEST_DIR:/opt/go/src/github.com/apcera/gssapi"
 else
         log "Run gssapi sample client on host"
         KRB5_CONFIG_TEMPLATE=${DOCKER_DIR}/client/krb5.conf.template \
