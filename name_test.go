@@ -21,16 +21,16 @@ func TestNameImportExport(t *testing.T) {
 	}
 
 	makeName := func(n string) (name *Name) {
-		b, _ := l.MakeBufferString(n)
+		b, err := l.MakeBufferString(n)
+		defer b.Release()
 		if err != nil {
 			t.Fatalf("%q: Got error %v, expected nil", n, err)
 		}
 		if b == nil {
 			t.Fatalf("%q: Got nil, expected non-nil", n)
 		}
-		defer b.Release()
 
-		name, err := b.Name(l.GSS_C_NT_HOSTBASED_SERVICE)
+		name, err = b.Name(l.GSS_C_NT_HOSTBASED_SERVICE)
 		if err != nil {
 			t.Fatalf("%q: Got error %v, expected nil", n, err)
 		}

@@ -17,8 +17,10 @@ import "unsafe"
 // explicitly released.  Calling the Release method is safe on uninitialized
 // objects, and nil pointers.
 
+type allocType int
+
 const (
-	allocNone = iota
+	allocNone = allocType(iota)
 	allocMalloc
 	allocGSSAPI
 )
@@ -30,7 +32,7 @@ type Buffer struct {
 
 	// indicates if the contents of the buffer must be released with
 	// gss_release_buffer (allocGSSAPI) or free-ed (allocMalloc)
-	alloc int
+	alloc allocType
 }
 
 // A Name represents a binary string labeling a security principal. In the case
@@ -51,7 +53,7 @@ type OID struct {
 
 	// indicates if the contents of the buffer must be released with
 	// gss_release_buffer (allocGSSAPI) or free-ed (allocMalloc)
-	alloc int
+	alloc allocType
 }
 
 // An OIDSet is a set of OIDs.
@@ -63,7 +65,7 @@ type OIDSet struct {
 // A CredId represents information like a cryptographic secret. In Kerberos,
 // this likely represents a keytab.
 type CredId struct {
-	*Lib
+	lib             *Lib
 	C_gss_cred_id_t C.gss_cred_id_t
 }
 

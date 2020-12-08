@@ -7,7 +7,7 @@ package test
 import (
 	"testing"
 
-	"github.com/apcera/gssapi"
+	"github.com/sassoftware/gssapi"
 )
 
 func TestIndicateMechs(t *testing.T) {

@@ -15,6 +15,7 @@ package gssapi
 import "C"
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -88,4 +89,13 @@ const (
 
 	// Infinite Lifetime, defined as 2^32-1
 	GSS_C_INDEFINITE = 0xffffffff * time.Second
+)
+
+var (
+	GSS_C_NO_CREDENTIAL *CredId = nil
+)
+
+// errors
+var (
+	ErrInvalidObject = fmt.Errorf("Object not initialized")
 )

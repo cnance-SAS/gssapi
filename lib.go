@@ -43,6 +43,9 @@ const gss_OID_desc *_GSS_MECH_SPNEGO               = & (gss_OID_desc) {  6, "\x2
 const gss_OID_desc *_GSS_MECH_IAKERB               = & (gss_OID_desc) {  6, "\x2b\x06\x01\x05\x02\x05" };
 const gss_OID_desc *_GSS_MECH_NTLMSSP              = & (gss_OID_desc) { 10, "\x2b\x06\x01\x04\x01\x82\x37\x02\x02\x0a" };
 
+// check impersonaton credential
+const gss_OID_desc *_GSS_KRB5_GET_CRED_IMPERSONATOR = & (gss_OID_desc) { 11, "\x2a\x86\x48\x86\xf7\x12\x01\x02\x02\x05\x0e" };
+
 */
 import "C"
 
@@ -73,6 +76,7 @@ const (
 	Notice
 	Info
 	Debug
+	Trace
 	MaxSeverity
 )
 
@@ -85,6 +89,7 @@ var severityNames = []string{
 	"Notice",
 	"Info",
 	"Debug",
+	"Trace",
 }
 
 // String returns the string name of a log Severity.
@@ -121,15 +126,16 @@ type ftable struct {
 	Fp_gss_import_name    unsafe.Pointer
 
 	// context.go
-	Fp_gss_init_sec_context      unsafe.Pointer
-	Fp_gss_accept_sec_context    unsafe.Pointer
-	Fp_gss_delete_sec_context    unsafe.Pointer
-	Fp_gss_process_context_token unsafe.Pointer
-	Fp_gss_context_time          unsafe.Pointer
-	Fp_gss_inquire_context       unsafe.Pointer
-	Fp_gss_wrap_size_limit       unsafe.Pointer
-	Fp_gss_export_sec_context    unsafe.Pointer
-	Fp_gss_import_sec_context    unsafe.Pointer
+	Fp_gss_init_sec_context           unsafe.Pointer
+	Fp_gss_accept_sec_context         unsafe.Pointer
+	Fp_gss_delete_sec_context         unsafe.Pointer
+	Fp_gss_process_context_token      unsafe.Pointer
+	Fp_gss_context_time               unsafe.Pointer
+	Fp_gss_inquire_context            unsafe.Pointer
+	Fp_gss_wrap_size_limit            unsafe.Pointer
+	Fp_gss_export_sec_context         unsafe.Pointer
+	Fp_gss_import_sec_context         unsafe.Pointer
+	Fp_gss_inquire_sec_context_by_oid unsafe.Pointer
 
 	// credential.go
 	Fp_gss_acquire_cred                  unsafe.Pointer
@@ -147,6 +153,7 @@ type ftable struct {
 	Fp_gss_store_cred_into               unsafe.Pointer
 	Fp_gss_import_cred                   unsafe.Pointer
 	Fp_gss_export_cred                   unsafe.Pointer
+	Fp_gss_inquire_cred_by_oid           unsafe.Pointer
 
 	// message.go
 	Fp_gss_get_mic    unsafe.Pointer
@@ -155,7 +162,8 @@ type ftable struct {
 	Fp_gss_unwrap     unsafe.Pointer
 
 	// misc.go
-	Fp_gss_indicate_mechs unsafe.Pointer
+	Fp_gss_indicate_mechs     unsafe.Pointer
+	Fp_gss_release_buffer_set unsafe.Pointer
 
 	// name.go
 	Fp_gss_canonicalize_name      unsafe.Pointer
@@ -182,28 +190,28 @@ type ftable struct {
 
 // constants are a number of constant initialized in initConstants.
 type constants struct {
-	GSS_C_NO_BUFFER     *Buffer
-	GSS_C_NO_OID        *OID
-	GSS_C_NO_OID_SET    *OIDSet
-	GSS_C_NO_CONTEXT    *CtxId
-	GSS_C_NO_CREDENTIAL *CredId
+	GSS_C_NO_BUFFER  *Buffer
+	GSS_C_NO_OID     *OID
+	GSS_C_NO_OID_SET *OIDSet
+	GSS_C_NO_CONTEXT *CtxId
 
 	// when adding new OID constants also need to update OID.DebugString
-	GSS_C_NT_USER_NAME           *OID
-	GSS_C_NT_MACHINE_UID_NAME    *OID
-	GSS_C_NT_STRING_UID_NAME     *OID
-	GSS_C_NT_HOSTBASED_SERVICE_X *OID
-	GSS_C_NT_HOSTBASED_SERVICE   *OID
-	GSS_C_NT_ANONYMOUS           *OID
-	GSS_C_NT_EXPORT_NAME         *OID
-	GSS_KRB5_NT_PRINCIPAL_NAME   *OID
-	GSS_KRB5_NT_PRINCIPAL        *OID
-	GSS_MECH_KRB5                *OID
-	GSS_MECH_KRB5_LEGACY         *OID
-	GSS_MECH_KRB5_OLD            *OID
-	GSS_MECH_SPNEGO              *OID
-	GSS_MECH_IAKERB              *OID
-	GSS_MECH_NTLMSSP             *OID
+	GSS_C_NT_USER_NAME             *OID
+	GSS_C_NT_MACHINE_UID_NAME      *OID
+	GSS_C_NT_STRING_UID_NAME       *OID
+	GSS_C_NT_HOSTBASED_SERVICE_X   *OID
+	GSS_C_NT_HOSTBASED_SERVICE     *OID
+	GSS_C_NT_ANONYMOUS             *OID
+	GSS_C_NT_EXPORT_NAME           *OID
+	GSS_KRB5_NT_PRINCIPAL_NAME     *OID
+	GSS_KRB5_NT_PRINCIPAL          *OID
+	GSS_MECH_KRB5                  *OID
+	GSS_MECH_KRB5_LEGACY           *OID
+	GSS_MECH_KRB5_OLD              *OID
+	GSS_MECH_SPNEGO                *OID
+	GSS_MECH_IAKERB                *OID
+	GSS_MECH_NTLMSSP               *OID
+	GSS_KRB5_GET_CRED_IMPERSONATOR *OID
 
 	GSS_C_NO_CHANNEL_BINDINGS ChannelBindings // implicitly initialized as nil
 }
@@ -245,7 +253,7 @@ func (o *Options) Path() string {
 
 // Load attempts to load a dynamically-linked gssapi library from the path
 // specified by the supplied Options.
-func Load(o *Options) (*Lib, error) {
+func Load(o *Options) (lib *Lib, err error) {
 	if o == nil {
 		o = &Options{}
 	}
@@ -254,54 +262,53 @@ func Load(o *Options) (*Lib, error) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	lib := &Lib{
+	newLib := &Lib{
 		Printers: o.Printers,
 	}
 
 	if o.Krb5Config != "" {
-		err := os.Setenv("KRB5_CONFIG", o.Krb5Config)
+		err = os.Setenv("KRB5_CONFIG", o.Krb5Config)
 		if err != nil {
-			return nil, err
+			return
 		}
 	}
 
 	if o.Krb5Ktname != "" {
-		err := os.Setenv("KRB5_KTNAME", o.Krb5Ktname)
+		err = os.Setenv("KRB5_KTNAME", o.Krb5Ktname)
 		if err != nil {
-			return nil, err
+			return
 		}
 	}
 
 	path := o.Path()
-	lib.Debug(fmt.Sprintf("Loading %q", path))
+	newLib.Trace(fmt.Sprintf("Loading %q", path))
 	lib_cs := C.CString(path)
 	defer C.free(unsafe.Pointer(lib_cs))
 
 	// we don't use RTLD_FIRST, it might be the case that the GSSAPI lib
 	// delegates symbols to other libs it links against (eg, Kerberos)
-	lib.handle = C.dlopen(lib_cs, C.RTLD_NOW|C.RTLD_LOCAL)
-	if lib.handle == nil {
-		return nil, fmt.Errorf("%s", C.GoString(C.dlerror()))
+	newLib.handle = C.dlopen(lib_cs, C.RTLD_NOW|C.RTLD_LOCAL)
+	if newLib.handle == nil {
+		err = fmt.Errorf("%s", C.GoString(C.dlerror()))
+		return
 	}
 
-	err := lib.populateFunctions()
+	err = newLib.populateFunctions()
 	if err != nil {
-		lib.Unload()
-		return nil, err
+		_ = newLib.Unload()
+		return
 	}
-	err = (&(lib.krb)).Load(lib.handle)
+	err = (&(newLib.krb)).Load(newLib.handle)
 	if err != nil {
-		lib.Debug(fmt.Sprintf("krb.Load() returned error: %v\n",err))
-		lib.Unload()
-		return nil, err
+		newLib.Debug(fmt.Sprintf("krb.Load() returned error: %v\n",err))
+		_ = newLib.Unload()
+		return
 	}
-	if lib.krb.ctx == nil {
-		lib.Debug("krb.Load failed to mutate.\n")
-	}
-	lib.Debug("krb.Load() succeeded:\n")
-	lib.initConstants()
+	lib = newLib
+	newLib.Trace("krb.Load() succeeded:\n")
+	newLib.initConstants()
 
-	return lib, nil
+	return
 }
 
 // Unload closes the handle to the dynamically-linked gssapi library.
@@ -376,7 +383,6 @@ func (lib *Lib) initConstants() {
 	lib.GSS_C_NO_OID = lib.NewOID()
 	lib.GSS_C_NO_OID_SET = lib.NewOIDSet()
 	lib.GSS_C_NO_CONTEXT = lib.NewCtxId()
-	lib.GSS_C_NO_CREDENTIAL = lib.NewCredId()
 
 	lib.GSS_C_NT_USER_NAME = &OID{Lib: lib, C_gss_OID: C._GSS_C_NT_USER_NAME}
 	lib.GSS_C_NT_MACHINE_UID_NAME = &OID{Lib: lib, C_gss_OID: C._GSS_C_NT_MACHINE_UID_NAME}
@@ -395,6 +401,7 @@ func (lib *Lib) initConstants() {
 	lib.GSS_MECH_SPNEGO = &OID{Lib: lib, C_gss_OID: C._GSS_MECH_SPNEGO}
 	lib.GSS_MECH_IAKERB = &OID{Lib: lib, C_gss_OID: C._GSS_MECH_IAKERB}
 	lib.GSS_MECH_NTLMSSP = &OID{Lib: lib, C_gss_OID: C._GSS_MECH_NTLMSSP}
+	lib.GSS_KRB5_GET_CRED_IMPERSONATOR = &OID{Lib:lib, C_gss_OID: C._GSS_KRB5_GET_CRED_IMPERSONATOR}
 }
 
 // Print outputs a log line to the specified severity.
@@ -413,3 +420,4 @@ func (lib *Lib) Warn(a ...interface{})   { lib.Print(Warn, a...) }
 func (lib *Lib) Notice(a ...interface{}) { lib.Print(Notice, a...) }
 func (lib *Lib) Info(a ...interface{})   { lib.Print(Info, a...) }
 func (lib *Lib) Debug(a ...interface{})  { lib.Print(Debug, a...) }
+func (lib *Lib) Trace(a ...interface{})  { lib.Print(Trace, a...) }

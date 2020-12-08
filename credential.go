@@ -474,6 +474,21 @@ wrap_gss_add_cred_with_password (void *fp,
 		acceptor_time_rec
 		);
 }
+
+OM_uint32 wrap_gss_inquire_cred_by_oid(void* fp,
+	OM_uint32 *minor_status,
+	const gss_cred_id_t cred_handle,
+	const gss_OID desired_object,
+	gss_buffer_set_t *data_set)
+{
+	return ((OM_uint32(*) (
+		OM_uint32*,
+		const gss_cred_id_t,
+		const gss_OID,
+		gss_buffer_set_t*)
+	) fp)(minor_status, cred_handle, desired_object, data_set);
+}
+
 */
 import "C"
 
@@ -486,7 +501,7 @@ import (
 // NewCredId instantiates a new credential.
 func (lib *Lib) NewCredId() *CredId {
 	return &CredId{
-		Lib: lib,
+		lib: lib,
 	}
 }
 
@@ -498,9 +513,9 @@ func (lib *Lib) AcquireCred(desiredName *Name, timeReq time.Duration,
 	actualMechs *OIDSet, timeRec time.Duration, err error) {
 
 	min := C.OM_uint32(0)
-	actualMechs = lib.NewOIDSet()
-	outputCredHandle = lib.NewCredId()
 	timerec := C.OM_uint32(0)
+	cCredHandle := C.gss_cred_id_t(nil)
+	cOIDSet := C.gss_OID_set(nil)
 	var name C.gss_name_t
 	if desiredName != nil {
 		name = desiredName.C_gss_name_t
@@ -513,16 +528,19 @@ func (lib *Lib) AcquireCred(desiredName *Name, timeReq time.Duration,
 		C.OM_uint32(timeReq.Seconds()),
 		desiredMechs.C_gss_OID_set,
 		C.gss_cred_usage_t(credUsage),
-		&outputCredHandle.C_gss_cred_id_t,
-		&actualMechs.C_gss_OID_set,
+		&cCredHandle,
+		&cOIDSet,
 		&timerec)
 
 	err = lib.stashLastStatus(maj, min)
-	if err != nil {
-		return nil, nil, 0, err
+	if err == nil {
+		actualMechs = lib.NewOIDSet()
+		actualMechs.C_gss_OID_set = cOIDSet
+		outputCredHandle = lib.NewCredId()
+		outputCredHandle.C_gss_cred_id_t = cCredHandle
 	}
 
-	return outputCredHandle, actualMechs, time.Duration(timerec) * time.Second, nil
+	return
 }
 
 // AddCred implements gss_add_cred API, as per
@@ -576,9 +594,11 @@ func (lib *Lib) AcquireCredImpersonateName(impersonatorCredHandle *CredId,
 	outputCredHandle *CredId, actualMechs *OIDSet, timeRec time.Duration,
 	err error) {
 
+	lib.Trace("*Lib.AcquireCredImpersonateName: enter\n")
+	defer func(){lib.Trace(fmt.Sprintf("*Lib.AcquireCredImpersonateName: exit"))}()
 	min := C.OM_uint32(0)
-	actualMechs = lib.NewOIDSet()
-	outputCredHandle = lib.NewCredId()
+	cOIDSet := C.gss_OID_set(nil)
+	cCred := C.gss_cred_id_t(nil)
 	timerec := C.OM_uint32(0)
 
 	maj := C.wrap_gss_acquire_cred_impersonate_name(lib.Fp_gss_acquire_cred_impersonate_name,
@@ -588,16 +608,22 @@ func (lib *Lib) AcquireCredImpersonateName(impersonatorCredHandle *CredId,
 		C.OM_uint32(timeReq.Seconds()),
 		desiredMechs.C_gss_OID_set,
 		C.gss_cred_usage_t(credUsage),
-		&outputCredHandle.C_gss_cred_id_t,
-		&actualMechs.C_gss_OID_set,
+		&cCred,
+		&cOIDSet,
 		&timerec)
 
 	err = lib.stashLastStatus(maj, min)
-	if err != nil {
-		return nil, nil, 0, err
+	if err == nil {
+		actualMechs = lib.NewOIDSet()
+		actualMechs.C_gss_OID_set = cOIDSet
+		outputCredHandle = lib.NewCredId()
+		outputCredHandle.C_gss_cred_id_t = cCred
+		timeRec = time.Duration(timerec) * time.Second
+	} else {
+		lib.Debug(fmt.Sprintf("*Lib.AcquireCredImpersonateName: gss_acquire_cred_impersonate_name returned error: %v", err))
 	}
 
-	return outputCredHandle, actualMechs, time.Duration(timerec) * time.Second, nil
+	return
 }
 
 // AddCredImpersonateName implements gss_add_cred_impersonate_name API, as per
@@ -611,8 +637,8 @@ func (lib *Lib) AddCredImpersonateName(inputCredHandle *CredId,
 	acceptorTimeRec time.Duration, err error) {
 
 	min := C.OM_uint32(0)
-	actualMechs = lib.NewOIDSet()
-	outputCredHandle = lib.NewCredId()
+	cOIDSet := C.gss_OID_set(nil)
+	cCred := C.gss_cred_id_t(nil)
 	initSeconds := C.OM_uint32(0)
 	acceptSeconds := C.OM_uint32(0)
 
@@ -625,21 +651,22 @@ func (lib *Lib) AddCredImpersonateName(inputCredHandle *CredId,
 		C.gss_cred_usage_t(credUsage),
 		C.OM_uint32(initiatorTimeReq.Seconds()),
 		C.OM_uint32(acceptorTimeReq.Seconds()),
-		&outputCredHandle.C_gss_cred_id_t,
-		&actualMechs.C_gss_OID_set,
+		&cCred,
+		&cOIDSet,
 		&initSeconds,
 		&acceptSeconds)
 
 	err = lib.stashLastStatus(maj, min)
-	if err != nil {
-		return nil, nil, 0, 0, err
+	if nil == err {
+		actualMechs = lib.NewOIDSet()
+		actualMechs.C_gss_OID_set = cOIDSet
+		outputCredHandle = lib.NewCredId()
+		outputCredHandle.C_gss_cred_id_t = cCred
+		initiatorTimeRec = time.Duration(initSeconds) * time.Second
+		acceptorTimeRec = time.Duration(acceptSeconds) * time.Second
 	}
 
-	return outputCredHandle,
-		actualMechs,
-		time.Duration(initSeconds) * time.Second,
-		time.Duration(acceptSeconds) * time.Second,
-		nil
+	return
 }
 
 // InquireCred implements gss_inquire_cred API, as per
@@ -672,6 +699,18 @@ func (lib *Lib) InquireCred(credHandle *CredId) (
 		credUsage,
 		mechanisms,
 		nil
+}
+
+func (cred *CredId) Inquire() (
+	name *Name, lifetime time.Duration, credUsage CredUsage, mechanisms *OIDSet,
+	err error) {
+
+	if cred == nil || cred.C_gss_cred_id_t == nil {
+		err = ErrInvalidObject
+		return
+	}
+
+	return cred.lib.InquireCred(cred)
 }
 
 // InquireCredByMech implements gss_inquire_cred_by_mech API, as per
@@ -707,18 +746,52 @@ func (lib *Lib) InquireCredByMech(credHandle *CredId, mechType *OID) (
 		nil
 }
 
+// InquireCredByMech implements gss_inquire_cred_by_mech API, as per
+// https://tools.ietf.org/html/rfc2743#page-39. name must be .Release()-ed by
+// the caller
+func (lib *Lib) InquireCredByOID(credHandle *CredId, desiredObject *OID) ([][]byte, error) {
+	return credHandle.InquireByOID(desiredObject)
+}
+
+func (cred *CredId) InquireByOID (desiredObject *OID) (dataSet [][]byte, err error) {
+	if cred == nil || cred.C_gss_cred_id_t == nil {
+		return
+	}
+
+	lib := cred.lib
+	lib.Trace(fmt.Sprintf("Cred.InquireByOID: enter\n"))
+	defer func(){lib.Trace(fmt.Sprintf("Cred.InquireByOID: exit\n"))}()
+	ptr := C.gss_buffer_set_t(nil)
+	min := C.OM_uint32(0)
+	maj := C.wrap_gss_inquire_cred_by_oid(lib.Fp_gss_inquire_cred_by_oid,
+		&min,
+		cred.C_gss_cred_id_t,
+		desiredObject.C_gss_OID,
+		&ptr)
+	err = lib.stashLastStatus(maj, min)
+	if err == nil {
+		dataSet = goBufferSet(ptr) // goBufferSet defined in context.go
+		if nil == dataSet {
+			err = ErrMallocFailed
+		}
+	}
+	_ = lib.ReleaseBufferSet(ptr)
+	return
+}
+
 // Release frees a credential.
 func (cred *CredId) Release() error {
 	if cred == nil || cred.C_gss_cred_id_t == nil {
 		return nil
 	}
 
+	lib := cred.lib
 	min := C.OM_uint32(0)
-	maj := C.wrap_gss_release_cred(cred.Fp_gss_release_cred,
+	maj := C.wrap_gss_release_cred(lib.Fp_gss_release_cred,
 		&min,
 		&cred.C_gss_cred_id_t)
 
-	return cred.stashLastStatus(maj, min)
+	return lib.stashLastStatus(maj, min)
 }
 
 //TODO: Test for AddCred with existing cred
@@ -768,6 +841,8 @@ func (lib *Lib) AddCredFrom(inputCredHandle *CredId,
 	initiatorTimeRec time.Duration, acceptorTimeRec time.Duration,
 	err error) {
 
+	lib.Trace(fmt.Sprintf("Lib.AddCredFrom: enter"))
+	defer func() {lib.Trace(fmt.Sprintf("Lib.AddCredFrom: exit"))}()
 	min := C.OM_uint32(0)
 	actualMechs = lib.NewOIDSet()
 	outputCredHandle = lib.NewCredId()
@@ -814,8 +889,15 @@ func (cred *CredId) Store(inputUsage CredUsage, desiredMech *OID,
 	overwriteCred bool, defaultCred bool) (elementsStored *OIDSet,
 	usageStored CredUsage, err error) {
 
+	if cred == nil || cred.C_gss_cred_id_t == nil {
+		return
+	}
+
+	lib := cred.lib
+	lib.Trace(fmt.Sprintf("Cred.Store: enter\n"))
+	defer func() {lib.Trace(fmt.Sprintf("Cred.Store: exit\n"))}()
 	min := C.OM_uint32(0)
-	elementsStored = cred.NewOIDSet()
+	elementsStored = lib.NewOIDSet()
 	cOverwriteCred := C.OM_uint32(0)
 	if overwriteCred {
 		cOverwriteCred = C.OM_uint32(1)
@@ -825,7 +907,7 @@ func (cred *CredId) Store(inputUsage CredUsage, desiredMech *OID,
 		cDefaultCred = C.OM_uint32(1)
 	}
 
-	maj := C.wrap_gss_store_cred(cred.Fp_gss_store_cred,
+	maj := C.wrap_gss_store_cred(lib.Fp_gss_store_cred,
 		&min,
 		cred.C_gss_cred_id_t,
 		C.gss_cred_usage_t(inputUsage),
@@ -834,7 +916,7 @@ func (cred *CredId) Store(inputUsage CredUsage, desiredMech *OID,
 		cDefaultCred,
 		&(elementsStored.C_gss_OID_set),
 		(*C.gss_cred_usage_t)(&usageStored))
-	err = cred.stashLastStatus(maj, min)
+	err = lib.stashLastStatus(maj, min)
 	if err != nil {
 		return nil, CredUsage(0), err
 	}
@@ -851,9 +933,20 @@ func (cred *CredId) StoreInto(inputCredUsage CredUsage, oid *OID,
 	overwriteCred bool, defaultCred bool, credStore *KeyValueSet) (
 	elementsStored *OIDSet, credUsage CredUsage, err error) {
 
+	if cred == nil || cred.C_gss_cred_id_t == nil {
+		return
+	}
+
+	lib := cred.lib
+	lib.Trace(fmt.Sprintf("Cred.StoreInto: enter\n"))
+	defer func() {lib.Trace(fmt.Sprintf("Cred.StoreInto: exit\n"))}()
+	cOID := C.gss_OID(nil)
+	if nil != oid {
+		cOID = oid.C_gss_OID
+	}
 	min := C.OM_uint32(0)
 	kvstoreOptions := credStore.C_gss_const_key_value_set_t()
-	elementsStored = cred.NewOIDSet()
+	elementsCOIDSet := C.gss_OID_set(nil)
 	credUsage = CredUsage(0)
 	defer Free_C_gss_const_key_value_set_t(kvstoreOptions)
 
@@ -866,25 +959,21 @@ func (cred *CredId) StoreInto(inputCredUsage CredUsage, oid *OID,
 		over = 1
 	}
 
-	maj := C.wrap_gss_store_cred_into(cred.Fp_gss_store_cred_into,
+	maj := C.wrap_gss_store_cred_into(lib.Fp_gss_store_cred_into,
 		&min,
 		cred.C_gss_cred_id_t,               // input_cred_handle,
 		C.gss_cred_usage_t(inputCredUsage), // input_usage,
-		oid.C_gss_OID,                      // desired_mech,
+		cOID,                               // desired_mech,
 		over,
 		def,
 		kvstoreOptions, // cred_store,
-		&elementsStored.C_gss_OID_set,
+		&elementsCOIDSet,
 		(*C.gss_cred_usage_t)(&credUsage))
-	err = cred.stashLastStatus(maj, min)
-	if err != nil {
-		return nil,
-			credUsage,
-			err
+	if err = lib.stashLastStatus(maj, min); nil == err {
+		elementsStored = lib.NewOIDSet()
+		elementsStored.C_gss_OID_set = elementsCOIDSet
 	}
-	return elementsStored,
-		credUsage,
-		err
+	return
 }
 
 func (lib *Lib) ImportCred(credToken Buffer) (outputCredId *CredId,
@@ -910,14 +999,18 @@ func (lib *Lib) ExportCred(inputCredHandle *CredId, credToken Buffer) (
 func (cred *CredId) Export(credToken Buffer) (
 	err error) {
 
-	min := C.OM_uint32(0)
+	if cred == nil || cred.C_gss_cred_id_t == nil {
+		return
+	}
 
-	maj := C.wrap_gss_export_cred(cred.Fp_gss_export_cred,
+	lib := cred.lib
+	min := C.OM_uint32(0)
+	maj := C.wrap_gss_export_cred(lib.Fp_gss_export_cred,
 		&min,
 		cred.C_gss_cred_id_t,
 		credToken.C_gss_buffer_t)
 
-	err = cred.stashLastStatus(maj, min)
+	err = lib.stashLastStatus(maj, min)
 	return err
 }
 
@@ -985,7 +1078,7 @@ func (lib *Lib) AddCredWithPassword(inputCredHandle *CredId, desiredName *Name,
 
 // before calling this function, service/username need to be connonicalized, and imported into gssapi library.
 func (lib *Lib) AcquireCredWithKinit(desiredName *Name, ktName string, timeReq time.Duration,
-	desiredMechs *OIDSet, credUsage CredUsage) (outputCredHandle *CredId,
+	desiredMechs *OIDSet, credUsage CredUsage, flags kinitOptionFlags) (outputCredHandle *CredId,
 	actualMechs *OIDSet, timeRec time.Duration, err error) {
 
 	lib.Debug(fmt.Sprintf("In AcquireCredWithKinit()")) // print at opposite severity levels
@@ -993,7 +1086,7 @@ func (lib *Lib) AcquireCredWithKinit(desiredName *Name, ktName string, timeReq t
 	if credUsage == GSS_C_INITIATE || credUsage == GSS_C_BOTH {
 		//KINIT so that we can acquire creds for "GSS_C_BOTH" or "GSS_C_INITIATE" usages
 		// here be low level krb5 library calls, do not export these.
-		if _, err := lib.Kinit(desiredName, ktName, timeReq, desiredMechs, credUsage); err != nil {
+		if _, err := lib.Kinit(desiredName, ktName, timeReq, desiredMechs, credUsage, flags); err != nil {
 			return nil, nil, 0 * time.Second, err
 		}
 	}

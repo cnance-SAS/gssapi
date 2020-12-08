@@ -4,6 +4,7 @@ package gssapi
 
 /*
 #include <gssapi/gssapi.h>
+#include <gssapi/gssapi_ext.h>
 #include <stdlib.h>
 
 OM_uint32
@@ -20,6 +21,17 @@ wrap_gss_indicate_mechs(void *fp,
 			mech_set);
 
 	return maj;
+}
+
+OM_uint32
+wrap_gss_release_buffer_set( void* fp,
+	OM_uint32 * minor_status,
+	gss_buffer_set_t * buffer_set)
+{
+	return ((OM_uint32(*) (
+		OM_uint32 *,
+		gss_buffer_set_t *)
+	) fp) (minor_status, buffer_set);
 }
 
 */
@@ -42,4 +54,15 @@ func (lib *Lib) IndicateMechs() (*OIDSet, error) {
 	}
 
 	return mechs, nil
+}
+
+func (lib *Lib) ReleaseBufferSet(bs C.gss_buffer_set_t) error {
+	if nil == bs {
+		return nil
+	}
+	min := C.OM_uint32(0)
+	maj := C.wrap_gss_release_buffer_set(lib.Fp_gss_release_buffer_set,
+		&min,
+		&bs)
+	return lib.stashLastStatus(maj, min)
 }
