@@ -454,9 +454,7 @@ wrap_krb5_free_error_message(void *fp,
 */
 import "C"
 
-import "C"
 import (
-	"errors"
 	"fmt"
 	"time"
 	"unsafe"
@@ -604,22 +602,22 @@ func (k5 *krbFtable) Load(handle unsafe.Pointer) error {
 		return err
 	}
 	if k5.ctx == ov {
-		return errors.New("krb5 context not created")
+		return fmt.Errorf("krb5 context not created")
 	}
 	return nil
 }
 
 func (k5 *krbFtable) Unload() {
-	k5.freeContext()
+	// causes seg fault, because function pointer is to bad address??? k5.freeContext()
 }
 
 func (lib *Lib) Kinit(desiredName *Name, ktName string, timeReq time.Duration,
-	desiredMechs *OIDSet, credUsage CredUsage) (cred C.krb5_ccache, err error) {
+	desiredMechs *OIDSet, credUsage CredUsage, flags kinitOptionFlags) (cred C.krb5_ccache, err error) {
 
 	// try to Kinit with desired name (might be nil), nil might still work, so try
-	cred, err = lib.krb.Kinit(desiredName, ktName, timeReq, desiredMechs, credUsage)
+	cred, err = lib.krb.Kinit(desiredName, ktName, timeReq, desiredMechs, credUsage, flags)
 	if err != nil {
-		lib.Debug(fmt.Sprintf("gssapilib.Lib.Kinit: first kinit returned err:\n  ", err))
+		lib.Debug(fmt.Sprintf("gssapilib.Lib.Kinit: first kinit returned err: %v\n  ", err))
 		if desiredName == nil || desiredName.C_gss_name_t == nil {
 			lib.Debug("gssapilib.Lib.Kinit: and desired name is nil\n")
 			// Kinit failed, and desired name is nil,
@@ -635,7 +633,7 @@ func (lib *Lib) Kinit(desiredName *Name, ktName string, timeReq time.Duration,
 					_ = oidSet.Release()
 					lib.Debug(fmt.Sprintf("gssapilib.Lib.Kinit: Found principal %s in keytab\n", defaultSPN.String()))
 					defer func() { _ = defaultSPN.Release() }()
-					cred, err = lib.krb.Kinit(defaultSPN, ktName, timeReq, desiredMechs, credUsage)
+					cred, err = lib.krb.Kinit(defaultSPN, ktName, timeReq, desiredMechs, credUsage, flags)
 					if err != nil {
 						lib.Debug(fmt.Sprintf("gssapi.Lib.Kinit: second Kinit error=\n%s\n", err.Error()))
 					} else {
@@ -658,10 +656,19 @@ func (lib *Lib) Kinit(desiredName *Name, ktName string, timeReq time.Duration,
 }
 
 // global error, so caller can handle this case.
-var ErrKinitNeedPrincipal = errors.New("kinit failed, Principal not supplied")
+var ErrKinitNeedPrincipal = fmt.Errorf("kinit failed, Principal not supplied")
+
+type kinitOptionFlags int
+const (
+	KinitDefaults       kinitOptionFlags = 0
+	KinitForwardable    kinitOptionFlags = 1<<0
+	KinitNotForwardable kinitOptionFlags = 1<<1
+	KinitProxiable      kinitOptionFlags = 1<<2
+	KinitNotProxiable   kinitOptionFlags = 1<<3
+)
 
 func (k5 krbFtable) Kinit(desiredName *Name, ktName string, timeReq time.Duration,
-	desiredMechs *OIDSet, credUsage CredUsage) (ccache C.krb5_ccache, err error) {
+	desiredMechs *OIDSet, credUsage CredUsage, flags kinitOptionFlags) (ccache C.krb5_ccache, err error) {
 
 	var k5Me C.krb5_principal = nil
 	if desiredName != nil && desiredName.C_gss_name_t != nil {
@@ -737,8 +744,20 @@ func (k5 krbFtable) Kinit(desiredName *Name, ktName string, timeReq time.Duratio
 	}
 	//krb5_get_init_creds_opt_set_tkt_life(options, opts->lifetime);
 	//krb5_get_init_creds_opt_set_renew_life(options, opts->rlife);
-	k5.getInitCredsOptSetForwardable(options, 0)
-	k5.getInitCredsOptSetProxiable(options, 0)
+
+	// There is an option to just not set forwardable/proxiable at all
+	if flags &KinitForwardable == KinitForwardable {
+		k5.getInitCredsOptSetForwardable(options, 1)
+	}
+	if flags &KinitNotForwardable == KinitNotForwardable { // not overrides do
+		k5.getInitCredsOptSetForwardable(options, 0)
+	}
+	if flags &KinitProxiable == KinitProxiable {
+		k5.getInitCredsOptSetProxiable(options, 1)
+	}
+	if flags &KinitNotProxiable == KinitNotProxiable { // not overrides do
+		k5.getInitCredsOptSetProxiable(options, 0)
+	}
 	//krb5_get_init_creds_opt_set_canonicalize(options, 1);
 	//krb5_get_init_creds_opt_set_anonymous(options, 1);
 	k5.getInitCredsOptSetAddressList(options, nil)
@@ -972,12 +991,18 @@ func (k5 krbFtable) getInitCredsOptSetOutCcache(opt *C.krb5_get_init_creds_opt, 
 }
 
 func (k5 krbFtable) getInitCredsOptSetForwardable(opt *C.krb5_get_init_creds_opt, i int) {
+	if 0 != i {
+		i = 1
+	}
 	C.wrap_krb5_get_init_creds_opt_set_forwardable(k5.fp_krb5_get_init_creds_opt_set_forwardable,
 		opt,
 		C.int(i))
 }
 
 func (k5 krbFtable) getInitCredsOptSetProxiable(opt *C.krb5_get_init_creds_opt, i int) {
+	if 0 != i {
+		i = 1
+	}
 	C.wrap_krb5_get_init_creds_opt_set_forwardable(k5.fp_krb5_get_init_creds_opt_set_proxiable,
 		opt,
 		C.int(i))

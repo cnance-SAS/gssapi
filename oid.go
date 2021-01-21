@@ -152,6 +152,8 @@ func (oid *OID) DebugString() string {
 		return "GSS_MECH_IAKERB"
 	case bytes.Equal(oid.Bytes(), oid.GSS_MECH_NTLMSSP.Bytes()):
 		return "GSS_MECH_NTLMSSP"
+	case bytes.Equal(oid.Bytes(), oid.GSS_KRB5_GET_CRED_IMPERSONATOR.Bytes()):
+		return "GSS_KRB5_GET_CRED_IMPERSONATOR"
 	}
 
 	return oid.String()

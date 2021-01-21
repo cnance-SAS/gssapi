@@ -54,16 +54,23 @@ wrap_gss_buffer_equal(
 import "C"
 
 import (
-	"errors"
+	"fmt"
 	"unsafe"
 )
 
 // ErrMallocFailed is returned when the malloc call has failed.
-var ErrMallocFailed = errors.New("malloc failed, out of memory?")
+var ErrMallocFailed = fmt.Errorf("malloc failed, out of memory?")
 
 // MakeBuffer returns a Buffer with an empty malloc-ed gss_buffer_desc in it.
 // The return value must be .Release()-ed
-func (lib *Lib) MakeBuffer(alloc int) (*Buffer, error) {
+func (lib *Lib) MakeBuffer(alloc allocType) (*Buffer, error) {
+	if allocNone == alloc {
+		return &Buffer{
+			Lib:            lib,
+			C_gss_buffer_t: nil,
+			alloc:          alloc,
+		}, nil
+	}
 	s := C.malloc(C.gss_buffer_size)
 	if s == nil {
 		return nil, ErrMallocFailed
@@ -114,9 +121,7 @@ func (b *Buffer) Release() error {
 	if b == nil || b.C_gss_buffer_t == nil {
 		return nil
 	}
-
 	defer func() {
-		C.free(unsafe.Pointer(b.C_gss_buffer_t))
 		b.C_gss_buffer_t = nil
 		b.alloc = allocNone
 	}()
@@ -128,6 +133,7 @@ func (b *Buffer) Release() error {
 
 	case b.alloc == allocMalloc:
 		C.free(b.C_gss_buffer_t.value)
+		C.free(unsafe.Pointer(b.C_gss_buffer_t))
 
 	case b.alloc == allocGSSAPI:
 		var min C.OM_uint32

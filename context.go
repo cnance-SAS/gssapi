@@ -6,6 +6,7 @@ package gssapi
 
 /*
 #include <gssapi/gssapi.h>
+#include <gssapi/gssapi_ext.h>
 
 OM_uint32
 wrap_gss_init_sec_context(void *fp,
@@ -143,12 +144,33 @@ wrap_gss_inquire_context(void *fp,
 		open);
 }
 
+OM_uint32
+wrap_gss_inquire_sec_context_by_oid(void* fp,
+	OM_uint32 *minor_status,
+	const gss_ctx_id_t context_handle,
+	const gss_OID desired_object,
+	gss_buffer_set_t *data_set)
+{
+	return ((OM_uint32(*) (
+		OM_uint32 *,
+		const gss_ctx_id_t,
+		const gss_OID,
+		gss_buffer_set_t *)
+	) fp) (minor_status, context_handle, desired_object, data_set);
+}
+
+void*
+getElementUnsafe(void* array, ulong index) {
+	return array + index;
+}
+
 */
 import "C"
 
 import (
 	"runtime"
 	"time"
+	"unsafe"
 )
 
 func (lib *Lib) NewCtxId() *CtxId {
@@ -360,12 +382,41 @@ func (ctx *CtxId) InquireContext() (
 	lifetimeRec = time.Duration(rec) * time.Second
 	ctxFlags = uint64(flags)
 
-	if li != 0 {
-		locallyInitiated = true
-	}
-	if opn != 0 {
-		open = true
-	}
+	locallyInitiated = li != 0
+	open = opn != 0
 
-	return srcName, targetName, lifetimeRec, mechType, ctxFlags, locallyInitiated, open, nil
+	return
+}
+
+// helper function wrapping function pointer math
+func goBufferSet (b C.gss_buffer_set_t) (ret [][]byte) {
+	count := b.count
+	if ret = make([][]byte, count); nil != ret {
+		for i := C.ulong(0); i < count; i++ {
+			element := C.gss_buffer_t(C.getElementUnsafe(unsafe.Pointer(b.elements),i))
+			ret[i] = C.GoBytes(element.value, C.int(element.length))
+		}
+	}
+	return
+}
+
+func (lib *Lib) InquireSecContextByOID(ctx *CtxId, desiredObject *OID) (dataSet [][]byte, err error) {
+	return ctx.InquireByOID(desiredObject)
+}
+
+func (ctx *CtxId) InquireByOID(desiredObject *OID) (dataSet [][]byte, err error) {
+	ptr := C.gss_buffer_set_t(nil)
+	min := C.OM_uint32(0)
+	maj := C.wrap_gss_inquire_sec_context_by_oid(ctx.Fp_gss_inquire_sec_context_by_oid,
+		&min,
+		ctx.C_gss_ctx_id_t,
+		desiredObject.C_gss_OID,
+		&ptr)
+	if err = ctx.stashLastStatus(maj, min); err == nil {
+		if dataSet  = goBufferSet(ptr); nil == dataSet {
+			err = ErrMallocFailed
+		}
+	}
+	_ = ctx.ReleaseBufferSet(ptr)
+	return
 }

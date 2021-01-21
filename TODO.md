@@ -25,11 +25,11 @@ These are the remaining GSSAPI calls to implement, in no particular order.
 - [ ] gss_import_sec_context
 - [ ] gss_indicate_mechs_by_attrs
 - [ ] gss_inquire_attrs_for_mech
-- [ ] gss_inquire_cred_by_oid
+- [X] gss_inquire_cred_by_oid
 - [ ] gss_inquire_mech_for_saslname
 - [ ] gss_inquire_name
 - [ ] gss_inquire_saslname_for_mech
-- [ ] gss_inquire_sec_context_by_oid
+- [X] gss_inquire_sec_context_by_oid
 - [ ] gss_krb5_ccache_name
 - [ ] gss_krb5_copy_ccache
 - [ ] gss_krb5_export_lucid_sec_context
@@ -46,7 +46,7 @@ These are the remaining GSSAPI calls to implement, in no particular order.
 - [ ] gss_process_context_token
 - [ ] gss_pseudo_random
 - [ ] gss_release_any_name_mapping
-- [ ] gss_release_buffer_set
+- [X] gss_release_buffer_set
 - [ ] gss_release_iov_buffer
 - [ ] gss_release_oid
 - [ ] gss_seal
